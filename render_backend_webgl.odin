@@ -3,56 +3,55 @@
 
 package karl2d
 
-@(private="package")
+@(private = "package")
 RENDER_BACKEND_WEBGL :: Render_Backend_Interface {
-	state_size = webgl_state_size,
-	init = webgl_init,
-	shutdown = webgl_shutdown,
-	clear = webgl_clear,
-	present = webgl_present,
-	draw = webgl_draw,
-	resize_swapchain = webgl_resize_swapchain,
-	get_swapchain_width = webgl_get_swapchain_width,
-	get_swapchain_height = webgl_get_swapchain_height,
-	set_internal_state = webgl_set_internal_state,
-	create_texture = webgl_create_texture,
-	load_texture = webgl_load_texture,
-	update_texture = webgl_update_texture,
-	destroy_texture = webgl_destroy_texture,
-	texture_needs_vertical_flip = webgl_texture_needs_vertical_flip,
-	create_render_texture = webgl_create_render_texture,
-	destroy_render_target = webgl_destroy_render_target,
-	set_texture_filter = webgl_set_texture_filter,
-	load_shader = webgl_load_shader,
-	destroy_shader = webgl_destroy_shader,
-
-	default_shader_vertex_source = webgl_default_shader_vertex_source,
+	state_size                     = webgl_state_size,
+	init                           = webgl_init,
+	shutdown                       = webgl_shutdown,
+	clear                          = webgl_clear,
+	present                        = webgl_present,
+	draw                           = webgl_draw,
+	resize_swapchain               = webgl_resize_swapchain,
+	get_swapchain_width            = webgl_get_swapchain_width,
+	get_swapchain_height           = webgl_get_swapchain_height,
+	set_internal_state             = webgl_set_internal_state,
+	create_texture                 = webgl_create_texture,
+	load_texture                   = webgl_load_texture,
+	update_texture                 = webgl_update_texture,
+	destroy_texture                = webgl_destroy_texture,
+	texture_needs_vertical_flip    = webgl_texture_needs_vertical_flip,
+	create_render_texture          = webgl_create_render_texture,
+	destroy_render_target          = webgl_destroy_render_target,
+	set_texture_filter             = webgl_set_texture_filter,
+	load_shader                    = webgl_load_shader,
+	destroy_shader                 = webgl_destroy_shader,
+	default_shader_vertex_source   = webgl_default_shader_vertex_source,
 	default_shader_fragment_source = webgl_default_shader_fragment_source,
 }
 
 import "base:runtime"
-import gl "vendor:wasm/WebGL"
 import hm "core:container/handle_map"
-import "log"
-import "core:strings"
 import la "core:math/linalg"
+import "core:strings"
+import "log"
+import gl "vendor:wasm/WebGL"
 
 _ :: la
 
 WebGL_State :: struct {
-	canvas_id: string,
-	width: int,
-	height: int,
-	allocator: runtime.Allocator,
-	shaders: hm.Dynamic_Handle_Map(WebGL_Shader, Shader_Handle),
+	canvas_id:         string,
+	width:             int,
+	height:            int,
+	allocator:         runtime.Allocator,
+	shaders:           hm.Dynamic_Handle_Map(WebGL_Shader, Shader_Handle),
 	vertex_buffer_gpu: gl.Buffer,
-	textures: hm.Dynamic_Handle_Map(WebGL_Texture, Texture_Handle),
-	render_targets: hm.Dynamic_Handle_Map(WebGL_Render_Target, Render_Target_Handle),
+	textures:          hm.Dynamic_Handle_Map(WebGL_Texture, Texture_Handle),
+	render_targets:    hm.Dynamic_Handle_Map(WebGL_Render_Target, Render_Target_Handle),
 }
 
 WebGL_Shader_Constant_Buffer :: struct {
-	buffer: gl.Buffer,
-	size: int,
+	buffer:      gl.Buffer,
+	size:        int,
 	block_index: i32,
 }
 
@@ -64,23 +63,23 @@ WebGL_Shader_Constant_Type :: enum {
 // OpenGL can have constants both in blocks (like constant buffers in D3D11), or as stand-alone
 // uniforms. We support both.
 WebGL_Shader_Constant :: struct {
-	type: WebGL_Shader_Constant_Type,
+	type:                  WebGL_Shader_Constant_Type,
 
 	// if type is Uniform, then this is the uniform loc
 	// if type is Block_Variable, then this is the block loc
-	loc: i32, 
+	loc:                   i32,
 
 	// if this is a block variable, then this is the offset to it
 	block_variable_offset: u32,
 
 	// if type is Uniform, then this contains the GL type of the uniform
-	uniform_type: gl.Enum,
+	uniform_type:          gl.Enum,
 }
 
 WebGL_Texture :: struct {
-	handle: Texture_Handle,
-	id: gl.Texture,
-	format: Pixel_Format,
+	handle:              Texture_Handle,
+	id:                  gl.Texture,
+	format:              Pixel_Format,
 	needs_vertical_flip: bool,
 }
 
@@ -89,23 +88,21 @@ WebGL_Texture_Binding :: struct {
 }
 
 WebGL_Render_Target :: struct {
-	handle: Render_Target_Handle,
+	handle:      Render_Target_Handle,
 	framebuffer: gl.Framebuffer,
-	width: int,
-	height: int,
+	width:       int,
+	height:      int,
 }
 
 WebGL_Shader :: struct {
-	handle: Shader_Handle,
+	handle:           Shader_Handle,
 
 	// This is like the "input layout"
-	vao: gl.VertexArrayObject,
-
-	program: gl.Program,
-
+	vao:              gl.VertexArrayObject,
+	program:          gl.Program,
 	constant_buffers: []WebGL_Shader_Constant_Buffer,
-	constants: []WebGL_Shader_Constant,
-	texture_bindings: []WebGL_Texture_Binding, 
+	constants:        []WebGL_Shader_Constant,
+	texture_bindings: []WebGL_Texture_Binding,
 }
 
 s: ^WebGL_State
@@ -120,13 +117,13 @@ webgl_init :: proc(
 	swapchain_width: int,
 	swapchain_height: int,
 	options: Init_Options,
-	allocator := context.allocator
+	allocator := context.allocator,
 ) {
 	s = (^WebGL_State)(state)
 
 	// see web_get_window_render_glue
 	canvas_id := (^HTML_Canvas_ID)(glue.state)^
-	
+
 	s.canvas_id = strings.clone(canvas_id, allocator)
 	s.width = swapchain_width
 	s.height = swapchain_height
@@ -139,9 +136,9 @@ webgl_init :: proc(
 	context_attribs := gl.DEFAULT_CONTEXT_ATTRIBUTES
 
 	if options.anti_alias {
-		context_attribs -= { .disableAntialias }
+		context_attribs -= {.disableAntialias}
 	} else {
-		context_attribs += { .disableAntialias }
+		context_attribs += {.disableAntialias}
 	}
 
 	context_ok := gl.CreateCurrentContextById(s.canvas_id, context_attribs)
@@ -202,8 +199,10 @@ webgl_draw :: proc(
 	}
 
 	switch blend_mode {
-	case .Alpha: gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	case .Premultiplied_Alpha: gl.BlendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+	case .Alpha:
+		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	case .Premultiplied_Alpha:
+		gl.BlendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 	}
 
 	gl.BindVertexArray(gl_shd.vao)
@@ -212,7 +211,7 @@ webgl_draw :: proc(
 	assert(len(shd.constants) == len(gl_shd.constants))
 
 	cpu_data := shd.constants_data
-	for cidx in 0..<len(gl_shd.constants) {
+	for cidx in 0 ..< len(gl_shd.constants) {
 		cpu_loc := shd.constants[cidx]
 
 		if cpu_loc.size == 0 {
@@ -226,9 +225,9 @@ webgl_draw :: proc(
 			gpu_buffer_info := gl_shd.constant_buffers[gpu_loc.loc]
 			gpu_data := gpu_buffer_info.buffer
 			gl.BindBuffer(gl.UNIFORM_BUFFER, gpu_data)
-			src := cpu_data[cpu_loc.offset:cpu_loc.offset+cpu_loc.size]
+			src := cpu_data[cpu_loc.offset:cpu_loc.offset + cpu_loc.size]
 			gl.BufferData(gl.UNIFORM_BUFFER, len(src), raw_data(src), gl.DYNAMIC_DRAW)
-			gl.BindBufferBase(gl.UNIFORM_BUFFER, gpu_loc.loc, gpu_data)	
+			gl.BindBufferBase(gl.UNIFORM_BUFFER, gpu_loc.loc, gpu_data)
 
 		case .Uniform:
 			loc := i32(gpu_loc.loc)
@@ -244,29 +243,29 @@ webgl_draw :: proc(
 			case gl.FLOAT_VEC2:
 				gl.Uniform2f(loc, fptr[0], fptr[1])
 			case gl.FLOAT_MAT2:
-				gl.UniformMatrix2fv(loc, (^matrix[2,2]f32)(ptr)^)
+				gl.UniformMatrix2fv(loc, (^matrix[2, 2]f32)(ptr)^)
 			case gl.FLOAT_MAT2x3:
-				gl.UniformMatrix2x3fv(loc, (^matrix[3,2]f32)(ptr)^)
+				gl.UniformMatrix2x3fv(loc, (^matrix[3, 2]f32)(ptr)^)
 			case gl.FLOAT_MAT2x4:
-				gl.UniformMatrix2x4fv(loc, (^matrix[4,2]f32)(ptr)^)
+				gl.UniformMatrix2x4fv(loc, (^matrix[4, 2]f32)(ptr)^)
 
 			case gl.FLOAT_VEC3:
 				gl.Uniform3f(loc, fptr[0], fptr[1], fptr[2])
 			case gl.FLOAT_MAT3x2:
-				gl.UniformMatrix3x2fv(loc, (^matrix[2,3]f32)(ptr)^)
+				gl.UniformMatrix3x2fv(loc, (^matrix[2, 3]f32)(ptr)^)
 			case gl.FLOAT_MAT3:
-				gl.UniformMatrix3fv(loc, (^matrix[3,3]f32)(ptr)^)
+				gl.UniformMatrix3fv(loc, (^matrix[3, 3]f32)(ptr)^)
 			case gl.FLOAT_MAT3x4:
-				gl.UniformMatrix3x4fv(loc, (^matrix[4,3]f32)(ptr)^)
+				gl.UniformMatrix3x4fv(loc, (^matrix[4, 3]f32)(ptr)^)
 
 			case gl.FLOAT_VEC4:
 				gl.Uniform4f(loc, fptr[0], fptr[1], fptr[2], fptr[3])
 			case gl.FLOAT_MAT4x2:
-				gl.UniformMatrix4x2fv(loc, (^matrix[2,4]f32)(ptr)^)
+				gl.UniformMatrix4x2fv(loc, (^matrix[2, 4]f32)(ptr)^)
 			case gl.FLOAT_MAT4x3:
-				gl.UniformMatrix4x3fv(loc, (^matrix[3,4]f32)(ptr)^)
+				gl.UniformMatrix4x3fv(loc, (^matrix[3, 4]f32)(ptr)^)
 			case gl.FLOAT_MAT4:
-				gl.UniformMatrix4fv(loc, (^matrix[4,4]f32)(ptr)^)
+				gl.UniformMatrix4fv(loc, (^matrix[4, 4]f32)(ptr)^)
 
 			case gl.INT:
 				gl.Uniform1i(loc, iptr[0])
@@ -286,9 +285,10 @@ webgl_draw :: proc(
 			case gl.UNSIGNED_INT_VEC4:
 				gl.Uniform4ui(loc, uptr[0], uptr[1], uptr[2], uptr[3])
 
-			case: log.errorf("Unknown type: %x", gpu_loc.uniform_type)
+			case:
+				log.errorf("Unknown type: %x", gpu_loc.uniform_type)
 			}
-			
+
 		}
 	}
 
@@ -313,7 +313,7 @@ webgl_draw :: proc(
 	}
 
 	rt := hm.get(&s.render_targets, render_target)
-	
+
 	if rt != nil {
 		gl.BindFramebuffer(gl.FRAMEBUFFER, rt.framebuffer)
 		gl.Viewport(0, 0, i32(rt.width), i32(rt.height))
@@ -335,7 +335,8 @@ webgl_draw :: proc(
 		gl.Scissor(i32(scissor.x), i32(flipped_y), i32(scissor.w), i32(scissor.h))
 	}
 
-	gl.DrawArrays(gl.TRIANGLES, 0, int(len(vertex_buffer)/shd.vertex_size))
+	gl.DrawArrays(gl.TRIANGLES, 0, int(len(vertex_buffer) / shd.vertex_size))
+	gl.Disable(gl.SCISSOR_TEST)
 }
 
 webgl_resize_swapchain :: proc(w, h: int) {
@@ -356,7 +357,12 @@ webgl_set_internal_state :: proc(state: rawptr) {
 	s = (^WebGL_State)(state)
 }
 
-create_texture :: proc(width: int, height: int, format: Pixel_Format, data: rawptr) -> WebGL_Texture {
+create_texture :: proc(
+	width: int,
+	height: int,
+	format: Pixel_Format,
+	data: rawptr,
+) -> WebGL_Texture {
 	id := gl.CreateTexture()
 	gl.BindTexture(gl.TEXTURE_2D, id)
 
@@ -367,17 +373,28 @@ create_texture :: proc(width: int, height: int, format: Pixel_Format, data: rawp
 
 	pf := gl_translate_pixel_format(format)
 
-	data_size := width*height*pixel_format_size(format)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, pf, i32(width), i32(height), 0, gl.RGBA, gl.UNSIGNED_BYTE, data_size, data)
+	data_size := width * height * pixel_format_size(format)
+	gl.TexImage2D(
+		gl.TEXTURE_2D,
+		0,
+		pf,
+		i32(width),
+		i32(height),
+		0,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		data_size,
+		data,
+	)
 
-	return {
-		id = id,
-		format = format,
-	}
+	return {id = id, format = format}
 }
 
 webgl_create_texture :: proc(width: int, height: int, format: Pixel_Format) -> Texture_Handle {
-	texture_handle, texture_handle_err := hm.add(&s.textures, create_texture(width, height, format, nil))
+	texture_handle, texture_handle_err := hm.add(
+		&s.textures,
+		create_texture(width, height, format, nil),
+	)
 
 	if texture_handle_err != nil {
 		log.errorf("Failed adding texture to handle map: %v", texture_handle_err)
@@ -387,8 +404,16 @@ webgl_create_texture :: proc(width: int, height: int, format: Pixel_Format) -> T
 	return texture_handle
 }
 
-webgl_load_texture :: proc(data: []u8, width: int, height: int, format: Pixel_Format) -> Texture_Handle {
-	texture_handle, texture_handle_err := hm.add(&s.textures, create_texture(width, height, format, raw_data(data)))
+webgl_load_texture :: proc(
+	data: []u8,
+	width: int,
+	height: int,
+	format: Pixel_Format,
+) -> Texture_Handle {
+	texture_handle, texture_handle_err := hm.add(
+		&s.textures,
+		create_texture(width, height, format, raw_data(data)),
+	)
 
 	if texture_handle_err != nil {
 		log.errorf("Failed adding texture to handle map: %v", texture_handle_err)
@@ -406,7 +431,18 @@ webgl_update_texture :: proc(th: Texture_Handle, data: []u8, rect: Rect) -> bool
 	}
 
 	gl.BindTexture(gl.TEXTURE_2D, tex.id)
-	gl.TexSubImage2D(gl.TEXTURE_2D, 0, i32(rect.x), i32(rect.y), i32(rect.w), i32(rect.h), gl.RGBA, gl.UNSIGNED_BYTE, len(data), raw_data(data))
+	gl.TexSubImage2D(
+		gl.TEXTURE_2D,
+		0,
+		i32(rect.x),
+		i32(rect.y),
+		i32(rect.w),
+		i32(rect.h),
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		len(data),
+		raw_data(data),
+	)
 	return true
 }
 
@@ -431,10 +467,16 @@ webgl_texture_needs_vertical_flip :: proc(th: Texture_Handle) -> bool {
 	return tex.needs_vertical_flip
 }
 
-webgl_create_render_texture :: proc(width: int, height: int) -> (Texture_Handle, Render_Target_Handle) {
+webgl_create_render_texture :: proc(
+	width: int,
+	height: int,
+) -> (
+	Texture_Handle,
+	Render_Target_Handle,
+) {
 	texture := create_texture(width, height, .RGBA_32_Float, nil)
 	texture.needs_vertical_flip = true
-	
+
 	framebuffer := gl.CreateFramebuffer()
 	gl.BindFramebuffer(gl.FRAMEBUFFER, framebuffer)
 
@@ -451,8 +493,8 @@ webgl_create_render_texture :: proc(width: int, height: int) -> (Texture_Handle,
 
 	rt := WebGL_Render_Target {
 		framebuffer = framebuffer,
-		width = width,
-		height = height,
+		width       = width,
+		height      = height,
 	}
 
 	texture_handle, texture_handle_err := hm.add(&s.textures, texture)
@@ -513,13 +555,21 @@ Shader_Compile_Result :: union #no_nil {
 	Shader_Compile_Result_Error,
 }
 
-compile_shader_from_source :: proc(shader_data: []byte, shader_type: gl.Enum, err_buf: []u8, err_msg: ^string) -> (shader_id: gl.Shader, ok: bool) {
+compile_shader_from_source :: proc(
+	shader_data: []byte,
+	shader_type: gl.Enum,
+	err_buf: []u8,
+	err_msg: ^string,
+) -> (
+	shader_id: gl.Shader,
+	ok: bool,
+) {
 	shader_id = gl.CreateShader(shader_type)
-	gl.ShaderSource(shader_id, { string(shader_data) })
+	gl.ShaderSource(shader_id, {string(shader_data)})
 	gl.CompileShader(shader_id)
 
 	result := gl.GetShaderiv(shader_id, gl.COMPILE_STATUS)
-		
+
 	if result != 1 {
 		err_msg^ = gl.GetShaderInfoLog(shader_id, err_buf)
 		gl.DeleteShader(shader_id)
@@ -529,7 +579,15 @@ compile_shader_from_source :: proc(shader_data: []byte, shader_type: gl.Enum, er
 	return shader_id, true
 }
 
-link_shader :: proc(vs_shader: gl.Shader, fs_shader: gl.Shader, err_buf: []u8, err_msg: ^string) -> (program_id: gl.Program, ok: bool) {
+link_shader :: proc(
+	vs_shader: gl.Shader,
+	fs_shader: gl.Shader,
+	err_buf: []u8,
+	err_msg: ^string,
+) -> (
+	program_id: gl.Program,
+	ok: bool,
+) {
 	program_id = gl.CreateProgram()
 	gl.AttachShader(program_id, vs_shader)
 	gl.AttachShader(program_id, fs_shader)
@@ -546,17 +604,35 @@ link_shader :: proc(vs_shader: gl.Shader, fs_shader: gl.Shader, err_buf: []u8, e
 	return program_id, true
 }
 
-webgl_load_shader :: proc(vs_source: []byte, fs_source: []byte, desc_allocator := frame_allocator, layout_formats: []Pixel_Format = {}) -> (handle: Shader_Handle, desc: Shader_Desc) {
-	@static err: [1024]u8
+webgl_load_shader :: proc(
+	vs_source: []byte,
+	fs_source: []byte,
+	desc_allocator := frame_allocator,
+	layout_formats: []Pixel_Format = {},
+) -> (
+	handle: Shader_Handle,
+	desc: Shader_Desc,
+) {
+	@(static) err: [1024]u8
 	err_msg: string
-	vs_shader, vs_shader_ok := compile_shader_from_source(vs_source, gl.VERTEX_SHADER, err[:], &err_msg)
+	vs_shader, vs_shader_ok := compile_shader_from_source(
+		vs_source,
+		gl.VERTEX_SHADER,
+		err[:],
+		&err_msg,
+	)
 
-	if !vs_shader_ok  {
+	if !vs_shader_ok {
 		log.error(err_msg)
 		return {}, {}
 	}
-	
-	fs_shader, fs_shader_ok := compile_shader_from_source(fs_source, gl.FRAGMENT_SHADER, err[:], &err_msg)
+
+	fs_shader, fs_shader_ok := compile_shader_from_source(
+		fs_source,
+		gl.FRAGMENT_SHADER,
+		err[:],
+		&err_msg,
+	)
 
 	if !fs_shader_ok {
 		log.error(err_msg)
@@ -576,40 +652,46 @@ webgl_load_shader :: proc(vs_source: []byte, fs_source: []byte, desc_allocator :
 		num_attribs := gl.GetProgramParameter(program, gl.ACTIVE_ATTRIBUTES)
 		desc.inputs = make([]Shader_Input, num_attribs, desc_allocator)
 
-		for i in 0..<num_attribs {
+		for i in 0 ..< num_attribs {
 			attrib_info := gl.GetActiveAttrib(program, u32(i), frame_allocator)
 			loc := gl.GetAttribLocation(program, attrib_info.name)
 
 			type: Shader_Input_Type
 
 			switch attrib_info.type {
-			case gl.FLOAT: type = .F32
-			case gl.FLOAT_VEC2: type = .Vec2
-			case gl.FLOAT_VEC3: type = .Vec3
-			case gl.FLOAT_VEC4: type = .Vec4
-			
+			case gl.FLOAT:
+				type = .F32
+			case gl.FLOAT_VEC2:
+				type = .Vec2
+			case gl.FLOAT_VEC3:
+				type = .Vec3
+			case gl.FLOAT_VEC4:
+				type = .Vec4
+
 			/* Possible (gl.) types:
 
 			   FLOAT, FLOAT_VEC2, FLOAT_VEC3, FLOAT_VEC4, FLOAT_MAT2,
 			   FLOAT_MAT3, FLOAT_MAT4, FLOAT_MAT2x3, FLOAT_MAT2x4,
 			   FLOAT_MAT3x2, FLOAT_MAT3x4, FLOAT_MAT4x2, FLOAT_MAT4x3,
-			   INT, INT_VEC2, INT_VEC3, INT_VEC4, UNSIGNED_INT, 
+			   INT, INT_VEC2, INT_VEC3, INT_VEC4, UNSIGNED_INT,
 			   UNSIGNED_INT_VEC2, UNSIGNED_INT_VEC3, UNSIGNED_INT_VEC4,
 			   DOUBLE, DOUBLE_VEC2, DOUBLE_VEC3, DOUBLE_VEC4, DOUBLE_MAT2,
 			   DOUBLE_MAT3, DOUBLE_MAT4, DOUBLE_MAT2x3, DOUBLE_MAT2x4,
 			   DOUBLE_MAT3x2, DOUBLE_MAT3x4, DOUBLE_MAT4x2, or DOUBLE_MAT4x3 */
 
-			case: log.errorf("Unknown type: %v", attrib_info.type)
+			case:
+				log.errorf("Unknown type: %v", attrib_info.type)
 			}
 
 			name := strings.clone(attrib_info.name, desc_allocator)
-			
-			format := len(layout_formats) > 0 ? layout_formats[loc] : get_shader_input_format(name, type)
+
+			format :=
+				len(layout_formats) > 0 ? layout_formats[loc] : get_shader_input_format(name, type)
 			desc.inputs[i] = {
-				name = name,
+				name     = name,
 				register = int(loc),
-				format = format,
-				type = type,
+				format   = format,
+				type     = type,
 			}
 
 			input_format := get_shader_input_format(name, type)
@@ -621,7 +703,7 @@ webgl_load_shader :: proc(vs_source: []byte, fs_source: []byte, desc_allocator :
 
 	gl_shd := WebGL_Shader {
 		program = program,
-		vao = gl.CreateVertexArray(),
+		vao     = gl.CreateVertexArray(),
 	}
 
 
@@ -629,12 +711,19 @@ webgl_load_shader :: proc(vs_source: []byte, fs_source: []byte, desc_allocator :
 	gl.BindVertexArray(gl_shd.vao)
 
 	offset: int
-	for idx in 0..<len(desc.inputs) {
+	for idx in 0 ..< len(desc.inputs) {
 		input := desc.inputs[idx]
 		format_size := pixel_format_size(input.format)
-		gl.EnableVertexAttribArray(i32(input.register))	
+		gl.EnableVertexAttribArray(i32(input.register))
 		format, num_components, norm := gl_describe_pixel_format(input.format)
-		gl.VertexAttribPointer(i32(input.register), num_components, format, norm, stride, uintptr(offset))
+		gl.VertexAttribPointer(
+			i32(input.register),
+			num_components,
+			format,
+			norm,
+			stride,
+			uintptr(offset),
+		)
 		offset += format_size
 	}
 
@@ -648,29 +737,36 @@ webgl_load_shader :: proc(vs_source: []byte, fs_source: []byte, desc_allocator :
 	{
 		num_active_uniforms := gl.GetProgramParameter(program, gl.ACTIVE_UNIFORMS)
 
-		for cidx in 0..<num_active_uniforms {
+		for cidx in 0 ..< num_active_uniforms {
 			uniform_info := gl.GetActiveUniform(program, u32(cidx), frame_allocator)
 			loc := gl.GetUniformLocation(program, uniform_info.name)
 
 			if uniform_info.type == gl.SAMPLER_2D {
-				append(&texture_bindpoint_descs, Shader_Texture_Bindpoint_Desc {
-					name = strings.clone(uniform_info.name, desc_allocator),
-				})
+				append(
+					&texture_bindpoint_descs,
+					Shader_Texture_Bindpoint_Desc {
+						name = strings.clone(uniform_info.name, desc_allocator),
+					},
+				)
 
-				append(&gl_texture_bindings, WebGL_Texture_Binding {
-					loc = loc,
-				})
+				append(&gl_texture_bindings, WebGL_Texture_Binding{loc = loc})
 			} else {
-				append(&constant_descs, Shader_Constant_Desc {
-					name = strings.clone(uniform_info.name, desc_allocator),
-					size = uniform_size(uniform_info.type),
-				})
+				append(
+					&constant_descs,
+					Shader_Constant_Desc {
+						name = strings.clone(uniform_info.name, desc_allocator),
+						size = uniform_size(uniform_info.type),
+					},
+				)
 
-				append(&gl_constants, WebGL_Shader_Constant {
-					type = .Uniform,
-					loc = loc,
-					uniform_type = uniform_info.type,
-				})
+				append(
+					&gl_constants,
+					WebGL_Shader_Constant {
+						type = .Uniform,
+						loc = loc,
+						uniform_type = uniform_info.type,
+					},
+				)
 			}
 		}
 	}
@@ -678,9 +774,13 @@ webgl_load_shader :: proc(vs_source: []byte, fs_source: []byte, desc_allocator :
 	// Blocks are like constant buffers in D3D, it's like a struct with multiple uniforms inside
 	{
 		num_active_uniform_blocks := gl.GetProgramParameter(program, gl.ACTIVE_UNIFORM_BLOCKS)
-		gl_shd.constant_buffers = make([]WebGL_Shader_Constant_Buffer, num_active_uniform_blocks, s.allocator)
+		gl_shd.constant_buffers = make(
+			[]WebGL_Shader_Constant_Buffer,
+			num_active_uniform_blocks,
+			s.allocator,
+		)
 
-		for cb_idx in 0..<num_active_uniform_blocks {
+		for cb_idx in 0 ..< num_active_uniform_blocks {
 			name := gl.GetActiveUniformBlockName(program, i32(cb_idx), frame_allocator)
 			idx := gl.GetUniformBlockIndex(program, name)
 
@@ -705,34 +805,50 @@ webgl_load_shader :: proc(vs_source: []byte, fs_source: []byte, desc_allocator :
 
 			gl_shd.constant_buffers[cb_idx] = {
 				block_index = idx,
-				buffer = buf,
-				size = int(size),
+				buffer      = buf,
+				size        = int(size),
 			}
 
 			num_uniforms: i32
-			gl.GetActiveUniformBlockParameter(program, idx, gl.UNIFORM_BLOCK_ACTIVE_UNIFORMS, &num_uniforms)
+			gl.GetActiveUniformBlockParameter(
+				program,
+				idx,
+				gl.UNIFORM_BLOCK_ACTIVE_UNIFORMS,
+				&num_uniforms,
+			)
 
 			uniform_indices := make([]i32, num_uniforms, frame_allocator)
-			gl.GetActiveUniformBlockParameter(program, idx, gl.UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES, raw_data(uniform_indices))
+			gl.GetActiveUniformBlockParameter(
+				program,
+				idx,
+				gl.UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES,
+				raw_data(uniform_indices),
+			)
 
-			for var_idx in 0..<num_uniforms {
+			for var_idx in 0 ..< num_uniforms {
 				uniform_idx := u32(uniform_indices[var_idx])
 
 				offset: i32
-				gl.GetActiveUniforms(program, { uniform_idx }, gl.UNIFORM_OFFSET, &offset)
+				gl.GetActiveUniforms(program, {uniform_idx}, gl.UNIFORM_OFFSET, &offset)
 
 				uniform_info := gl.GetActiveUniform(program, uniform_idx, desc_allocator)
 
-				append(&constant_descs, Shader_Constant_Desc {
-					name = uniform_info.name,
-					size = uniform_size(uniform_info.type),
-				})
+				append(
+					&constant_descs,
+					Shader_Constant_Desc {
+						name = uniform_info.name,
+						size = uniform_size(uniform_info.type),
+					},
+				)
 
-				append(&gl_constants, WebGL_Shader_Constant {
-					type = .Block_Variable,
-					loc = idx,
-					block_variable_offset = u32(offset),
-				})
+				append(
+					&gl_constants,
+					WebGL_Shader_Constant {
+						type = .Block_Variable,
+						loc = idx,
+						block_variable_offset = u32(offset),
+					},
+				)
 			}
 		}
 	}
@@ -760,38 +876,64 @@ webgl_load_shader :: proc(vs_source: []byte, fs_source: []byte, desc_allocator :
 uniform_size :: proc(t: gl.Enum) -> int {
 	sz: int
 	switch t {
-	case gl.FLOAT:        sz = 4*1
+	case gl.FLOAT:
+		sz = 4 * 1
 
-	case gl.FLOAT_VEC2:   sz = 4*2*1
-	case gl.FLOAT_MAT2:   sz = 4*2*2
-	case gl.FLOAT_MAT2x3: sz = 4*2*3
-	case gl.FLOAT_MAT2x4: sz = 4*2*4
+	case gl.FLOAT_VEC2:
+		sz = 4 * 2 * 1
+	case gl.FLOAT_MAT2:
+		sz = 4 * 2 * 2
+	case gl.FLOAT_MAT2x3:
+		sz = 4 * 2 * 3
+	case gl.FLOAT_MAT2x4:
+		sz = 4 * 2 * 4
 
-	case gl.FLOAT_VEC3:   sz = 4*3*1
-	case gl.FLOAT_MAT3x2: sz = 4*3*2
-	case gl.FLOAT_MAT3:   sz = 4*3*3
-	case gl.FLOAT_MAT3x4: sz = 4*3*4
+	case gl.FLOAT_VEC3:
+		sz = 4 * 3 * 1
+	case gl.FLOAT_MAT3x2:
+		sz = 4 * 3 * 2
+	case gl.FLOAT_MAT3:
+		sz = 4 * 3 * 3
+	case gl.FLOAT_MAT3x4:
+		sz = 4 * 3 * 4
 
-	case gl.FLOAT_VEC4:   sz = 4*4*1
-	case gl.FLOAT_MAT4x2: sz = 4*4*2
-	case gl.FLOAT_MAT4x3: sz = 4*4*3
-	case gl.FLOAT_MAT4:   sz = 4*4*4
+	case gl.FLOAT_VEC4:
+		sz = 4 * 4 * 1
+	case gl.FLOAT_MAT4x2:
+		sz = 4 * 4 * 2
+	case gl.FLOAT_MAT4x3:
+		sz = 4 * 4 * 3
+	case gl.FLOAT_MAT4:
+		sz = 4 * 4 * 4
 
-	case gl.BOOL:      sz = 4*1
-	case gl.BOOL_VEC2: sz = 4*2
-	case gl.BOOL_VEC3: sz = 4*3
-	case gl.BOOL_VEC4: sz = 4*4
+	case gl.BOOL:
+		sz = 4 * 1
+	case gl.BOOL_VEC2:
+		sz = 4 * 2
+	case gl.BOOL_VEC3:
+		sz = 4 * 3
+	case gl.BOOL_VEC4:
+		sz = 4 * 4
 
-	case gl.INT:      sz = 4*1
-	case gl.INT_VEC2: sz = 4*2
-	case gl.INT_VEC3: sz = 4*3
-	case gl.INT_VEC4: sz = 4*4
+	case gl.INT:
+		sz = 4 * 1
+	case gl.INT_VEC2:
+		sz = 4 * 2
+	case gl.INT_VEC3:
+		sz = 4 * 3
+	case gl.INT_VEC4:
+		sz = 4 * 4
 
-	case gl.UNSIGNED_INT:      sz = 4*1
-	case gl.UNSIGNED_INT_VEC2: sz = 4*2
-	case gl.UNSIGNED_INT_VEC3: sz = 4*3
-	case gl.UNSIGNED_INT_VEC4: sz = 4*4
-	case: log.errorf("Unhandled uniform type: %x", t)
+	case gl.UNSIGNED_INT:
+		sz = 4 * 1
+	case gl.UNSIGNED_INT_VEC2:
+		sz = 4 * 2
+	case gl.UNSIGNED_INT_VEC3:
+		sz = 4 * 3
+	case gl.UNSIGNED_INT_VEC4:
+		sz = 4 * 4
+	case:
+		log.errorf("Unhandled uniform type: %x", t)
 	}
 
 	return sz
@@ -799,39 +941,63 @@ uniform_size :: proc(t: gl.Enum) -> int {
 
 gl_translate_pixel_format :: proc(f: Pixel_Format) -> gl.Enum {
 	switch f {
-	case .RGBA_32_Float: return gl.RGBA
-	case .RGB_32_Float: return gl.RGB
-	case .RG_32_Float: return gl.RG
-	case .R_32_Float: return gl.RED
+	case .RGBA_32_Float:
+		return gl.RGBA
+	case .RGB_32_Float:
+		return gl.RGB
+	case .RG_32_Float:
+		return gl.RG
+	case .R_32_Float:
+		return gl.RED
 
 	// IS THIS STUFF CORRECT? Compare to GL backend
 	// Do we need float textures? What is happening...
-	case .RGBA_8_Norm: return gl.RGBA
-	case .RG_8_Norm: return gl.RG
-	case .R_8_Norm: return gl.RED
-	case .R_8_UInt: return gl.RED
+	case .RGBA_8_Norm:
+		return gl.RGBA
+	case .RG_8_Norm:
+		return gl.RG
+	case .R_8_Norm:
+		return gl.RED
+	case .R_8_UInt:
+		return gl.RED
 
-	case .Unknown: fallthrough
-	case: log.error("Unhandled pixel format %v", f) 
+	case .Unknown:
+		fallthrough
+	case:
+		log.error("Unhandled pixel format %v", f)
 	}
-	
+
 	return 0
 }
 
 
-gl_describe_pixel_format :: proc(f: Pixel_Format) -> (format: gl.Enum, num_components: int, normalized: bool) {
+gl_describe_pixel_format :: proc(
+	f: Pixel_Format,
+) -> (
+	format: gl.Enum,
+	num_components: int,
+	normalized: bool,
+) {
 	switch f {
-	case .RGBA_32_Float: return gl.FLOAT, 4, false
-	case .RGB_32_Float: return gl.FLOAT, 3, false
-	case .RG_32_Float: return gl.FLOAT, 2, false
-	case .R_32_Float: return gl.FLOAT, 1, false
+	case .RGBA_32_Float:
+		return gl.FLOAT, 4, false
+	case .RGB_32_Float:
+		return gl.FLOAT, 3, false
+	case .RG_32_Float:
+		return gl.FLOAT, 2, false
+	case .R_32_Float:
+		return gl.FLOAT, 1, false
 
-	case .RGBA_8_Norm: return gl.UNSIGNED_BYTE, 4, true
-	case .RG_8_Norm: return gl.UNSIGNED_BYTE, 2, true
-	case .R_8_Norm: return gl.UNSIGNED_BYTE, 1, true
-	case .R_8_UInt: return gl.BYTE, 1, false
-	
-	case .Unknown: 
+	case .RGBA_8_Norm:
+		return gl.UNSIGNED_BYTE, 4, true
+	case .RG_8_Norm:
+		return gl.UNSIGNED_BYTE, 2, true
+	case .R_8_Norm:
+		return gl.UNSIGNED_BYTE, 1, true
+	case .R_8_UInt:
+		return gl.BYTE, 1, false
+
+	case .Unknown:
 	}
 
 	log.errorf("Unknown format %x", format)
@@ -860,4 +1026,3 @@ webgl_default_shader_fragment_source :: proc() -> []byte {
 	fragment_source := #load("default_shaders/default_shader_webgl_fragment.glsl")
 	return fragment_source
 }
-
