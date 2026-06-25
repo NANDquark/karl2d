@@ -52,6 +52,7 @@ wl_init :: proc(
 	s.allocator = allocator
 	s.scale = 1
 	s.odin_ctx = context
+	s.window_mode = options.window_mode
 
 	s.display = wl.display_connect(nil)
 
@@ -102,6 +103,10 @@ wl_init :: proc(
 
 	unscaled_width := screen_width
 	unscaled_height := screen_height
+	if s.last_configure_width > 0 && s.last_configure_height > 0 {
+		unscaled_width = s.last_configure_width
+		unscaled_height = s.last_configure_height
+	}
 
 	scaled_width := int(f32(unscaled_width) * s.scale)
 	scaled_height := int(f32(unscaled_height) * s.scale)
@@ -290,8 +295,12 @@ toplevel_listener := wl.XDG_Toplevel_Listener {
 			s.last_configure_width = w
 			s.last_configure_height = h
 
-			wl.egl_window_resize(s.window, i32(s.screen_width), i32(s.screen_height), 0, 0)
-			wl.wp_viewport_set_destination(s.viewport, i32(w), i32(h))
+			if s.window != nil {
+				wl.egl_window_resize(s.window, i32(s.screen_width), i32(s.screen_height), 0, 0)
+			}
+			if s.viewport != nil {
+				wl.wp_viewport_set_destination(s.viewport, i32(w), i32(h))
+			}
 
 			append(&s.events, Event_Screen_Resize {
 				width = s.screen_width,
@@ -505,7 +514,9 @@ fractional_scale_listener := wl.WP_Fractional_Scale_V1_Listener {
 		s.scale = scl
 		s.screen_width = int(f32(s.last_configure_width) * s.scale)
 		s.screen_height = int(f32(s.last_configure_height) * s.scale)
-		wl.egl_window_resize(s.window, i32(s.screen_width), i32(s.screen_height), 0, 0)
+		if s.window != nil {
+			wl.egl_window_resize(s.window, i32(s.screen_width), i32(s.screen_height), 0, 0)
+		}
 
 		append(&s.events, Event_Window_Scale_Changed {
 			scale = scl,
@@ -746,4 +757,3 @@ WL_State :: struct {
 }
 
 s: ^WL_State
-
